@@ -69,7 +69,7 @@ def handle_callbacks(bot, call, OWNER_ID):
                 "Дата релиза: 11.12.2025\n\n"
                 "Дата создания: 05.12.2025\n\n"
                 "Весь код открыт и доступен на GitHub:\n"
-                "https://github.com/Rensage/BrenkBot\n\n"
+                "https://github.com/Ransege/BrenkBot.git\n\n"
                 "Лицензия: MIT — можешь использовать, изучать, модифицировать.\n"
                 "Главное — сохрани авторство.\n\n"
                 "Спасибо, что ты с нами!"
@@ -180,3 +180,4 @@ def handle_comment_input(bot, message: Message, OWNER_ID):
     link, comment = message.text.split('\n', 1)
     bot.send_message(OWNER_ID, f"Комментарий:\n{link.strip()}\n\n{comment.strip()}")
     bot.send_message(message.chat.id, "Комментарий отправлен!")
+
