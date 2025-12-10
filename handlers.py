@@ -60,7 +60,27 @@ def handle_callbacks(bot, call, OWNER_ID):
             ai_mode_users.pop(call.from_user.id, None)
             user_modes[call.from_user.id] = "normal"
             bot.answer_callback_query(call.id)
-            bot.send_message(call.message.chat.id, "Главное меню:", reply_markup=get_main_markup())
+            bot.send_message(call.message.chat.id, "Главное меню:", reply_markup=get_main_markup())    
+
+        elif call.data == 'show_license':
+            license_text = (
+                "BrenkBot — Telegram-бот для @BrenkDesign\n\n"
+                "Автор и разработчик: Rensage\n"
+                "Дата релиза: 11.12.2025\n\n"
+                "Дата создания: 05.12.2025\n\n"
+                "Весь код открыт и доступен на GitHub:\n"
+                "https://github.com/Rensage/BrenkBot\n\n"
+                "Лицензия: MIT — можешь использовать, изучать, модифицировать.\n"
+                "Главное — сохрани авторство.\n\n"
+                "Спасибо, что ты с нами"
+            )
+            bot.answer_callback_query(call.id)
+            bot.send_message(
+                call.message.chat.id,
+                license_text,
+                reply_markup=get_return_markup(),
+                disable_web_page_preview=False
+            )
 
         elif call.data == 'leave_comment':
             bot.answer_callback_query(call.id)
