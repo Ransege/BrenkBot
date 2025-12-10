@@ -8,6 +8,7 @@ def get_main_markup():
         InlineKeyboardButton("Инструкция", callback_data='show_guide'),
         InlineKeyboardButton("Обновления", callback_data='show_updates'),
         InlineKeyboardButton("AI-CHAT", callback_data='ai_chat'),
+        InlineKeyboardButton("Лицензия и автор", callback_data='show_license'),
     )
     return markup
 
