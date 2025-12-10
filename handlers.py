@@ -72,7 +72,7 @@ def handle_callbacks(bot, call, OWNER_ID):
                 "https://github.com/Rensage/BrenkBot\n\n"
                 "Лицензия: MIT — можешь использовать, изучать, модифицировать.\n"
                 "Главное — сохрани авторство.\n\n"
-                "Спасибо, что ты с нами"
+                "Спасибо, что ты с нами!"
             )
             bot.answer_callback_query(call.id)
             bot.send_message(
