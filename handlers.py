@@ -70,7 +70,7 @@ def handle_callbacks(bot, call, OWNER_ID):
                 "Дата создания: 05.12.2025\n\n"
                 "Весь код открыт и доступен на GitHub:\n"
                 "https://github.com/Rensage/BrenkBot\n\n"
-                "Лицензия: MIT — можешь использовать, изучать, модифицировать.\n"
+                "Лицензия: MIT — можешь использовать и изучать.\n"
                 "Главное — сохрани авторство.\n\n"
                 "Спасибо, что ты с нами!"
             )
@@ -116,10 +116,9 @@ def handle_callbacks(bot, call, OWNER_ID):
         elif call.data == 'show_updates':
             bot.answer_callback_query(call.id)
             bot.send_message(call.message.chat.id,
-                "Последние обновления (07.12.2025):\n"
-                "• AI-CHAT с выбором режима сразу\n"
-                "• Три грани Brenk\n"
-                "• Кнопка «Сменить режим» в чате",
+                "Последние обновления (11.12.2025):\n"
+                "• Кнопка «Выход из чата» при запущенном AI-CHAT",
+                "• Кнопка «Лицензия и авторство» в Главном меню",
                 reply_markup=get_return_markup())
 
         elif call.data.startswith('show_username_button_'):
