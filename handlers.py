@@ -117,7 +117,7 @@ def handle_callbacks(bot, call, OWNER_ID):
             bot.answer_callback_query(call.id)
             bot.send_message(call.message.chat.id,
                 "Последние обновления (11.12.2025):\n"
-                "• Кнопка «Выход из чата» при запущенном AI-CHAT",
+                "•  Кнопка «Выход из чата» при запущенном AI-CHAT\n"
                 "• Кнопка «Лицензия и авторство» в Главном меню",
                 reply_markup=get_return_markup())
 
