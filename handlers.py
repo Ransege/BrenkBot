@@ -117,8 +117,6 @@ def handle_callbacks(bot, call, OWNER_ID):
             bot.answer_callback_query(call.id)
             bot.send_message(call.message.chat.id,
                 "Последние обновления (11.12.2025):\n"
-                "•  Кнопка «Выход из чата» при запущенном AI-CHAT\n"
-                "• Кнопка «Лицензия и авторство» в Главном меню\n",
                 "• В Mini App добавлена мини игра\n",
                 "• В Mini App добавлен актуальный прайс-лист",
                 reply_markup=get_return_markup())
@@ -181,3 +179,4 @@ def handle_comment_input(bot, message: Message, OWNER_ID):
     link, comment = message.text.split('\n', 1)
     bot.send_message(OWNER_ID, f"Комментарий:\n{link.strip()}\n\n{comment.strip()}")
     bot.send_message(message.chat.id, "Комментарий отправлен!")
+
