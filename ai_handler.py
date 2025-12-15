@@ -47,7 +47,7 @@ def handle_ai_chat(bot, message):
             max_tokens=600
         )
         reply = response.choices[0].message.content
-        bot.send_message(user_id, reply)
+        bot.send_message(user_id, reply)  # Убрал parse_mode
 
     except Exception as e:
         bot.send_message(user_id, "Что-то пошло не так… Попробуй ещё раз позже")

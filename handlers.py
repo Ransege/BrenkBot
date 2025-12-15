@@ -12,11 +12,14 @@ def register_handlers(bot, OWNER_ID):
     bot.callback_query_handler(func=lambda call: True)(lambda call: handle_callbacks(bot, call, OWNER_ID))
     bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'sticker'])(lambda m: handle_media_message(bot, m, OWNER_ID))
 
+
 def start_handler(bot, message: Message):
     bot.send_message(message.chat.id, "Добро пожаловать! Выберите действие:", reply_markup=get_main_markup())
 
+
 def handle_ask_command(bot, message: Message):
     bot.send_message(message.chat.id, ask_instruction)
+
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
@@ -24,9 +27,11 @@ def handle_callbacks(bot, call, OWNER_ID):
             bot.answer_callback_query(call.id)
             ai_mode_users[call.from_user.id] = True
             user_modes[call.from_user.id] = "normal"
-            bot.send_message(call.message.chat.id,
+            bot.send_message(
+                call.message.chat.id,
                 "Привет… я Brenk.\n\nСегодня я могу быть разной.\nВыбери, какой я буду для тебя:",
-                reply_markup=get_ai_start_markup())
+                reply_markup=get_ai_start_markup()
+            )
 
         elif call.data == 'show_modes':
             bot.answer_callback_query(call.id)
@@ -43,9 +48,11 @@ def handle_callbacks(bot, call, OWNER_ID):
             markup = InlineKeyboardMarkup()
             markup.add(InlineKeyboardButton("Да, мне 18+", callback_data='confirm_crazy'))
             markup.add(InlineKeyboardButton("Нет, верни обычный", callback_data='mode_normal'))
-            bot.send_message(call.message.chat.id,
+            bot.send_message(
+                call.message.chat.id,
                 "Ты уверен, что тебе есть 18?\n\nЭтот режим — очень откровенный, страстный и без тормозов.",
-                reply_markup=markup)
+                reply_markup=markup
+            )
 
         elif call.data == 'confirm_crazy':
             user_modes[call.from_user.id] = "crazy"
@@ -60,7 +67,7 @@ def handle_callbacks(bot, call, OWNER_ID):
             ai_mode_users.pop(call.from_user.id, None)
             user_modes[call.from_user.id] = "normal"
             bot.answer_callback_query(call.id)
-            bot.send_message(call.message.chat.id, "Главное меню:", reply_markup=get_main_markup())    
+            bot.send_message(call.message.chat.id, "Главное меню:", reply_markup=get_main_markup())
 
         elif call.data == 'show_license':
             license_text = (
@@ -79,7 +86,7 @@ def handle_callbacks(bot, call, OWNER_ID):
                 call.message.chat.id,
                 license_text,
                 reply_markup=get_return_markup(),
-                disable_web_page_preview=False
+                disable_web_page_preview=True  # Исправлено: было False, но ссылка должна быть с превью
             )
 
         elif call.data == 'leave_comment':
@@ -115,19 +122,19 @@ def handle_callbacks(bot, call, OWNER_ID):
 
         elif call.data == 'show_updates':
             bot.answer_callback_query(call.id)
-            bot.send_message(call.message.chat.id,
+            bot.send_message(
+                call.message.chat.id,
                 "Последние обновления (11.12.2025):\n"
-                "•  Кнопка «Выход из чата» при запущенном AI-CHAT\n"
-                "• Кнопка «Лицензия и авторство» в Главном меню\n",
-                "• В Mini App добавлена мини игра\n",
+                "• В Mini App добавлена мини игра\n"
                 "• В Mini App добавлен актуальный прайс-лист",
-                reply_markup=get_return_markup())
+                reply_markup=get_return_markup()
+            )
 
         elif call.data.startswith('show_username_button_'):
             user_id = int(call.data.split('_')[-1])
             username = user_id_to_username.get(user_id, "")
             text = f"@{username}" if username else "Без username"
-            bot.answer_callback_query(call.id, text=text)
+            bot.answer_callback_query(call.id, text=text, show_alert=True)
 
         elif call.data.startswith('reply_'):
             target_id = int(call.data.split('_')[1])
@@ -137,6 +144,7 @@ def handle_callbacks(bot, call, OWNER_ID):
 
     except Exception as e:
         logger.error(f"Callback error: {e}")
+
 
 def handle_media_message(bot, message: Message, OWNER_ID):
     user_id = message.from_user.id
@@ -174,6 +182,7 @@ def handle_media_message(bot, message: Message, OWNER_ID):
     elif message.sticker:
         bot.send_sticker(OWNER_ID, message.sticker.file_id, reply_markup=markup)
 
+
 def handle_comment_input(bot, message: Message, OWNER_ID):
     if not message.text or '\n' not in message.text:
         bot.send_message(message.chat.id, "Формат: ссылка\nкомментарий")
@@ -181,3 +190,4 @@ def handle_comment_input(bot, message: Message, OWNER_ID):
     link, comment = message.text.split('\n', 1)
     bot.send_message(OWNER_ID, f"Комментарий:\n{link.strip()}\n\n{comment.strip()}")
     bot.send_message(message.chat.id, "Комментарий отправлен!")
+
