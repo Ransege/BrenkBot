@@ -118,7 +118,9 @@ def handle_callbacks(bot, call, OWNER_ID):
             bot.send_message(call.message.chat.id,
                 "Последние обновления (11.12.2025):\n"
                 "•  Кнопка «Выход из чата» при запущенном AI-CHAT\n"
-                "• Кнопка «Лицензия и авторство» в Главном меню",
+                "• Кнопка «Лицензия и авторство» в Главном меню\n",
+                "• В Mini App добавлена мини игра\n",
+                "• В Mini App добавлен актуальный прайс-лист",
                 reply_markup=get_return_markup())
 
         elif call.data.startswith('show_username_button_'):
