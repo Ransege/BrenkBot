@@ -1,4 +1,6 @@
 import logging
+import sqlite3
+from datetime import datetime
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards import get_main_markup, get_return_markup, get_guide_markup, get_message_markup, get_modes_markup, get_ai_start_markup, get_ai_chat_markup
 from states import pending_reply, user_id_to_username, ask_instruction, ai_mode_users, user_modes
@@ -6,9 +8,75 @@ from ai_handler import handle_ai_chat
 
 logger = logging.getLogger(__name__)
 
+
+DB_FILE = "farm.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS farm_progress (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 0,
+            hack_level INTEGER DEFAULT 1,
+            limit_level INTEGER DEFAULT 0,
+            today_mined INTEGER DEFAULT 0,
+            last_reset TEXT,
+            streak INTEGER DEFAULT 0,
+            last_claim TEXT,
+            mined_date TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def get_user_progress(user_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT * FROM farm_progress WHERE user_id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "balance": row[1],
+            "hack_level": row[2],
+            "limit_level": row[3],
+            "today_mined": row[4],
+            "last_reset": row[5],
+            "streak": row[6],
+            "last_claim": row[7],
+            "mined_date": row[8]
+        }
+    return None
+
+def save_user_progress(user_id, data):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        INSERT OR REPLACE INTO farm_progress 
+        (user_id, balance, hack_level, limit_level, today_mined, last_reset, streak, last_claim, mined_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        user_id,
+        data.get('balance', 0),
+        data.get('hack_level', 1),
+        data.get('limit_level', 0),
+        data.get('today_mined', 0),
+        data.get('last_reset'),
+        data.get('streak', 0),
+        data.get('last_claim'),
+        data.get('mined_date')
+    ))
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
 def register_handlers(bot, OWNER_ID):
     bot.message_handler(commands=['start'])(lambda m: start_handler(bot, m))
     bot.message_handler(commands=['ask'])(lambda m: handle_ask_command(bot, m))
+    bot.message_handler(commands=['farm'])(lambda m: handle_farm_command(bot, m))
     bot.callback_query_handler(func=lambda call: True)(lambda call: handle_callbacks(bot, call, OWNER_ID))
     bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'sticker'])(lambda m: handle_media_message(bot, m, OWNER_ID))
 
@@ -19,6 +87,35 @@ def start_handler(bot, message: Message):
 
 def handle_ask_command(bot, message: Message):
     bot.send_message(message.chat.id, ask_instruction)
+
+
+def handle_farm_command(bot, message: Message):
+    user_id = message.from_user.id
+    progress = get_user_progress(user_id)
+
+    if not progress:
+        text = (
+            "🌌 *Brenk-Coin Farm*\n\n"
+            "Твой прогресс ещё не начат.\n"
+            "Зайди в Mini App → Brenk-Coin Farm и начни взламывать мою сеть ♡\n\n"
+            "Команда работает только после первого входа в игру."
+        )
+    else:
+        hack_per_tap = 1 if progress['hack_level'] == 1 else pow(2, progress['hack_level'] - 1) * 2 + (progress['hack_level'] - 2) * 4
+        today = datetime.now().strftime("%Y-%m-%d")
+        bonus_claimed = progress['last_claim'] == today
+
+        text = (
+            f"🌌 *Brenk-Coin Farm*\n\n"
+            f"💰 Баланс: *{progress['balance']:,} BC*\n"
+            f"🔓 Уровень взлома: *{progress['hack_level']}* (+{hack_per_tap} BC за тап)\n"
+            f"⬆️ Уровень лимита: *{progress['limit_level']}*\n"
+            f"⏳ Добыто сегодня: *{progress['today_mined']} BC*\n"
+            f"🎁 Ежедневный бонус: {'Получен' if bonus_claimed else 'Доступен!'}\n\n"
+            f"Продолжить фарм → нажми кнопку в меню Mini App"
+        )
+
+    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=get_main_markup())
 
 
 def handle_callbacks(bot, call, OWNER_ID):
@@ -86,7 +183,7 @@ def handle_callbacks(bot, call, OWNER_ID):
                 call.message.chat.id,
                 license_text,
                 reply_markup=get_return_markup(),
-                disable_web_page_preview=True  # Исправлено: было False, но ссылка должна быть с превью
+                disable_web_page_preview=True
             )
 
         elif call.data == 'leave_comment':
@@ -115,6 +212,9 @@ def handle_callbacks(bot, call, OWNER_ID):
                 "• Обычный — тёплый и душевный\n"
                 "• Флирт — игривый и кокетливый\n"
                 "• Безумный 18+ — страстный и откровенный\n\n"
+                "Brenk-Coin Farm\n"
+                "• Зайди в Mini App → взламывай мою сеть и добывай BC\n"
+                "• Команда /farm покажет твой прогресс\n\n"
                 "Всё анонимно и с душой"
             )
             bot.answer_callback_query(call.id)
@@ -124,9 +224,10 @@ def handle_callbacks(bot, call, OWNER_ID):
             bot.answer_callback_query(call.id)
             bot.send_message(
                 call.message.chat.id,
-                "Последние обновления (11.12.2025):\n"
-                "• В Mini App добавлена мини игра\n"
-                "• В Mini App добавлен актуальный прайс-лист",
+                "Последние обновления (17.12.2025):\n"
+                "• Синхронизация Mini App и бота — прогресс BrenkCoin доступен через /farm\n"
+                "• Добавлена команда /farm для просмотра баланса\n"
+                "• Улучшена адаптивность топа комментариев",
                 reply_markup=get_return_markup()
             )
 
