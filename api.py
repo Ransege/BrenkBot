@@ -26,7 +26,7 @@ def init_db():
                 streak INTEGER DEFAULT 0,
                 last_claim TEXT,
                 fields_unlocked INTEGER DEFAULT 1,
-                reset_data TEXT  -- храним как TEXT (JSON-строка)
+                reset_data TEXT
             )
         ''')
 
@@ -72,7 +72,13 @@ def farm_api():
         conn.close()
         if row:
             reset_data_str = row[9] if len(row) > 9 else None
-            reset_data = json.loads(reset_data_str) if reset_data_str else None
+            if reset_data_str is not None and isinstance(reset_data_str, str):
+                try:
+                    reset_data = json.loads(reset_data_str)
+                except json.JSONDecodeError:
+                    reset_data = None
+            else:
+                reset_data = None
             
             result = {
                 "balance": row[1],
@@ -103,8 +109,7 @@ def farm_api():
 
     elif request.method == 'POST':
         data = request.json
-        print(f"POST запрос для user_id={user_id}")
-        print(f"Полученные данные: {data}")
+
 
         reset_data_raw = data.get('reset_data')
         reset_data_json = json.dumps(reset_data_raw) if reset_data_raw is not None else None
@@ -124,7 +129,7 @@ def farm_api():
                 data.get('streak', 0),
                 data.get('last_claim'),
                 data.get('fields_unlocked', 1),
-                reset_data_json  # ← Сохраняем как строку
+                reset_data_json
             ))
             conn.commit()
             print(f"Прогресс успешно сохранён для user_id={user_id}")
@@ -137,5 +142,5 @@ def farm_api():
         return jsonify({"status": "saved"})
 
 if __name__ == '__main__':
-    print("Flask API запущен на порту 10311 с поддержкой CORS и JSON для reset_data")
+    print("Flask API запущен на порту 10311 с поддержкой CORS и безопасным JSON")
     app.run(host='0.0.0.0', port=10311)
