@@ -5,7 +5,7 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards import get_main_markup, get_return_markup, get_guide_markup, get_message_markup, get_modes_markup, get_ai_start_markup, get_ai_chat_markup
 from states import pending_reply, user_id_to_username, ask_instruction, ai_mode_users, user_modes
 from ai_handler import handle_ai_chat
-from broadcast import register_user_for_broadcast  # ← Уже есть
+from broadcast import register_user_for_broadcast  # ← Только это из broadcast
 
 logger = logging.getLogger(__name__)
 
@@ -75,34 +75,16 @@ def save_user_progress(user_id, data):
 init_db()
 
 def register_handlers(bot, OWNER_ID):
-
-    bot.message_handler(commands=['admin'])(lambda m: admin_command(bot, m, OWNER_ID))
-
+    # Основные команды
     bot.message_handler(commands=['start'])(lambda m: start_handler(bot, m))
     bot.message_handler(commands=['ask'])(lambda m: handle_ask_command(bot, m))
     bot.message_handler(commands=['farm'])(lambda m: handle_farm_command(bot, m))
+
+    # Все колбэки — в одном обработчике
     bot.callback_query_handler(func=lambda call: True)(lambda call: handle_callbacks(bot, call, OWNER_ID))
+
+    # Медиа и текст
     bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'sticker'])(lambda m: handle_media_message(bot, m, OWNER_ID))
-
-
-
-def admin_command(bot, message: Message, OWNER_ID):
-    if message.from_user.id != OWNER_ID:
-        bot.send_message(message.chat.id, "🚫 Доступ запрещён. Ты не владелец бота.")
-        return
-
-
-    from broadcast import get_admin_keyboard
-
-    bot.send_message(
-        message.chat.id,
-        "🔧 <b>Админ-панель BrenkBot</b>\n\n"
-        "Здесь ты можешь:\n"
-        "• Создать опрос для всех пользователей\n"
-        "• Посмотреть статистику голосования",
-        parse_mode="HTML",
-        reply_markup=get_admin_keyboard()
-    )
 
 
 def start_handler(bot, message: Message):
@@ -146,6 +128,7 @@ def handle_farm_command(bot, message: Message):
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
+        # === ОСНОВНЫЕ КОЛБЭКИ ===
         if call.data == 'ai_chat':
             bot.answer_callback_query(call.id)
             ai_mode_users[call.from_user.id] = True
