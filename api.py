@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import os
+import json  # ← Добавлено для работы с JSON
 from flask_cors import CORS
 from main import bot 
 
@@ -9,13 +10,11 @@ CORS(app)
 
 DB_FILE = "farm.db"
 
-
 def init_db():
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         
-
         c.execute('''
             CREATE TABLE IF NOT EXISTS farm_progress (
                 user_id INTEGER PRIMARY KEY,
@@ -27,7 +26,7 @@ def init_db():
                 streak INTEGER DEFAULT 0,
                 last_claim TEXT,
                 fields_unlocked INTEGER DEFAULT 1,
-                reset_data TEXT
+                reset_data TEXT  -- храним как TEXT (JSON-строка)
             )
         ''')
 
@@ -47,7 +46,6 @@ def init_db():
         print(f"[INIT] Таблица готова. База: {os.path.abspath(DB_FILE)}")
     except Exception as e:
         print(f"[INIT ERROR] Ошибка: {e}")
-
 
 init_db()
 
@@ -73,6 +71,9 @@ def farm_api():
         row = c.fetchone()
         conn.close()
         if row:
+            reset_data_str = row[9] if len(row) > 9 else None
+            reset_data = json.loads(reset_data_str) if reset_data_str else None
+            
             result = {
                 "balance": row[1],
                 "hack_level": row[2],
@@ -82,7 +83,7 @@ def farm_api():
                 "streak": row[6],
                 "last_claim": row[7],
                 "fields_unlocked": row[8] if len(row) > 8 else 1,
-                "reset_data": row[9] if len(row) > 9 else None
+                "reset_data": reset_data
             }
             print(f"Найден прогресс: {result}")
             return jsonify(result)
@@ -105,6 +106,10 @@ def farm_api():
         print(f"POST запрос для user_id={user_id}")
         print(f"Полученные данные: {data}")
 
+        # Преобразуем reset_data в JSON-строку
+        reset_data_raw = data.get('reset_data')
+        reset_data_json = json.dumps(reset_data_raw) if reset_data_raw is not None else None
+
         try:
             c.execute('''
                 INSERT OR REPLACE INTO farm_progress 
@@ -120,7 +125,7 @@ def farm_api():
                 data.get('streak', 0),
                 data.get('last_claim'),
                 data.get('fields_unlocked', 1),
-                data.get('reset_data')
+                reset_data_json  # ← Сохраняем как строку
             ))
             conn.commit()
             print(f"Прогресс успешно сохранён для user_id={user_id}")
@@ -133,5 +138,5 @@ def farm_api():
         return jsonify({"status": "saved"})
 
 if __name__ == '__main__':
-    print("Flask API запущен на порту 10311 с поддержкой CORS")
+    print("Flask API запущен на порту 10311 с поддержкой CORS и JSON для reset_data")
     app.run(host='0.0.0.0', port=10311)
