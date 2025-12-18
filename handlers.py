@@ -5,6 +5,7 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards import get_main_markup, get_return_markup, get_guide_markup, get_message_markup, get_modes_markup, get_ai_start_markup, get_ai_chat_markup
 from states import pending_reply, user_id_to_username, ask_instruction, ai_mode_users, user_modes
 from ai_handler import handle_ai_chat
+from broadcast import register_user_for_broadcast  # ← НОВАЯ СТРОКА
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,9 @@ def register_handlers(bot, OWNER_ID):
 
 
 def start_handler(bot, message: Message):
+    # ← ДОБАВЛЕНО: регистрация пользователя для рассылки
+    register_user_for_broadcast(message.from_user.id)
+
     bot.send_message(message.chat.id, "Добро пожаловать! Выберите действие:", reply_markup=get_main_markup())
 
 
