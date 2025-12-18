@@ -1,7 +1,6 @@
 import os
 import logging
 from handlers import register_handlers
-from broadcast import register_broadcast_handlers
 from telebot import TeleBot
 from dotenv import load_dotenv
 
@@ -24,15 +23,11 @@ if OWNER_ID == 0:
 bot = TeleBot(TOKEN)
 
 
-
 register_handlers(bot, OWNER_ID)
-
-
-register_broadcast_handlers(bot, OWNER_ID)
 
 if __name__ == '__main__':
     logger.info(f"Бот запущен. Владелец: {OWNER_ID}")
-    logger.info("Подключены: основные хендлеры + рассылка-опросы")
+    logger.info("Подключены только основные хендлеры")
     try:
         bot.infinity_polling(none_stop=True)
     except Exception as e:
