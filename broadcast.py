@@ -1,3 +1,4 @@
+# broadcast.py
 import sqlite3
 import logging
 from datetime import datetime
@@ -50,15 +51,17 @@ def get_admin_keyboard():
     )
     return markup
 
+# Состояние ожидания текста опроса
 waiting_for_poll = set()
 
+# ← ИСПРАВЛЕНО: добавлен параметр OWNER_ID
 def register_broadcast_handlers(bot, OWNER_ID):
     @bot.message_handler(commands=['admin'])
     def admin_panel(message):
         if message.from_user.id != OWNER_ID:
             bot.send_message(message.chat.id, "🚫 Доступ запрещён.")
             return
-        bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=get_admin_keyboard())
+        bot.send_message(message.chat.id, "🔧 Админ-панель BrenkBot", reply_markup=get_admin_keyboard())
 
     @bot.callback_query_handler(func=lambda call: call.data == "admin_create_poll")
     def create_poll(call):
@@ -66,7 +69,7 @@ def register_broadcast_handlers(bot, OWNER_ID):
             bot.answer_callback_query(call.id)
             return
         waiting_for_poll.add(call.from_user.id)
-        bot.edit_message_text("📝 Введите текст опроса:", call.message.chat.id, call.message.message_id)
+        bot.edit_message_text("📝 Введите текст опроса для рассылки:", call.message.chat.id, call.message.message_id)
         bot.answer_callback_query(call.id)
 
     @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_poll)
@@ -75,7 +78,7 @@ def register_broadcast_handlers(bot, OWNER_ID):
             return
         poll_text = message.text.strip()
         if not poll_text:
-            bot.send_message(message.chat.id, "Текст не может быть пустым!")
+            bot.send_message(message.chat.id, "❌ Текст не может быть пустым!")
             return
 
         waiting_for_poll.discard(message.from_user.id)
@@ -109,7 +112,7 @@ def register_broadcast_handlers(bot, OWNER_ID):
                 logger.warning(f"Не удалось отправить {uid}: {e}")
 
         bot.send_message(message.chat.id,
-                         f"Опрос разослан!\nУспешно: {success}\nНе доставлено: {failed}",
+                         f"✅ Опрос разослан!\nУспешно: {success}\nНе доставлено: {failed}\nID: {poll_id}",
                          reply_markup=get_admin_keyboard())
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith(("poll_yes_", "poll_no_")))
@@ -145,7 +148,7 @@ def register_broadcast_handlers(bot, OWNER_ID):
         conn.close()
 
         if not row:
-            bot.edit_message_text("Опросов нет.", call.message.chat.id, call.message.message_id, reply_markup=get_admin_keyboard())
+            bot.edit_message_text("Опросов ещё не проводилось.", call.message.chat.id, call.message.message_id, reply_markup=get_admin_keyboard())
             return
 
         msg, yes, no = row
