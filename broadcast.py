@@ -6,7 +6,6 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 logger = logging.getLogger(__name__)
 
 DB_FILE = "farm.db"
-OWNER_ID = 844645311
 
 def init_broadcast_db():
     conn = sqlite3.connect(DB_FILE)
@@ -53,17 +52,18 @@ def get_admin_keyboard():
 
 waiting_for_poll = set()
 
-def register_broadcast_handlers(bot):
+def register_broadcast_handlers(bot, OWNER_ID):
     @bot.message_handler(commands=['admin'])
     def admin_panel(message):
         if message.from_user.id != OWNER_ID:
-            bot.send_message(message.chat.id, "Доступ запрещён.")
+            bot.send_message(message.chat.id, "🚫 Доступ запрещён.")
             return
         bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=get_admin_keyboard())
 
     @bot.callback_query_handler(func=lambda call: call.data == "admin_create_poll")
     def create_poll(call):
         if call.from_user.id != OWNER_ID:
+            bot.answer_callback_query(call.id)
             return
         waiting_for_poll.add(call.from_user.id)
         bot.edit_message_text("📝 Введите текст опроса:", call.message.chat.id, call.message.message_id)
@@ -104,8 +104,9 @@ def register_broadcast_handlers(bot):
             try:
                 bot.send_message(uid, poll_text, reply_markup=keyboard)
                 success += 1
-            except:
+            except Exception as e:
                 failed += 1
+                logger.warning(f"Не удалось отправить {uid}: {e}")
 
         bot.send_message(message.chat.id,
                          f"Опрос разослан!\nУспешно: {success}\nНе доставлено: {failed}",
@@ -155,6 +156,6 @@ def register_broadcast_handlers(bot):
         total_users = c.fetchone()[0]
         conn.close()
 
-        text = f"📊 **Результаты**\n\n{msg}\n\n✅ Да: {yes}\n❌ Нет: {no}\n🗳 Голосов: {total}\n👥 Пользователей: {total_users}"
+        text = f"📊 **Результаты последнего опроса**\n\n{msg}\n\n✅ Да: {yes}\n❌ Нет: {no}\n🗳 Голосов: {total}\n👥 Пользователей: {total_users}"
         bot.edit_message_text(text, call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=get_admin_keyboard())
         bot.answer_callback_query(call.id)
