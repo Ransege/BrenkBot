@@ -5,10 +5,8 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards import get_main_markup, get_return_markup, get_guide_markup, get_message_markup, get_modes_markup, get_ai_start_markup, get_ai_chat_markup
 from states import pending_reply, user_id_to_username, ask_instruction, ai_mode_users, user_modes
 from ai_handler import handle_ai_chat
-from broadcast import register_user_for_broadcast
 
 logger = logging.getLogger(__name__)
-
 
 DB_FILE = "farm.db"
 
@@ -71,7 +69,6 @@ def save_user_progress(user_id, data):
     conn.commit()
     conn.close()
 
-
 init_db()
 
 def register_handlers(bot, OWNER_ID):
@@ -86,16 +83,11 @@ def register_handlers(bot, OWNER_ID):
 
     bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'sticker'])(lambda m: handle_media_message(bot, m, OWNER_ID))
 
-
 def start_handler(bot, message: Message):
-    register_user_for_broadcast(message.from_user.id)
-
     bot.send_message(message.chat.id, "Добро пожаловать! Выберите действие:", reply_markup=get_main_markup())
-
 
 def handle_ask_command(bot, message: Message):
     bot.send_message(message.chat.id, ask_instruction)
-
 
 def handle_farm_command(bot, message: Message):
     user_id = message.from_user.id
@@ -124,7 +116,6 @@ def handle_farm_command(bot, message: Message):
         )
 
     bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=get_main_markup())
-
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
@@ -255,7 +246,6 @@ def handle_callbacks(bot, call, OWNER_ID):
     except Exception as e:
         logger.error(f"Callback error: {e}")
 
-
 def handle_media_message(bot, message: Message, OWNER_ID):
     user_id = message.from_user.id
     if message.from_user.username:
@@ -291,7 +281,6 @@ def handle_media_message(bot, message: Message, OWNER_ID):
         bot.send_document(OWNER_ID, message.document.file_id, caption=f"Документ от {user_id}", reply_markup=markup)
     elif message.sticker:
         bot.send_sticker(OWNER_ID, message.sticker.file_id, reply_markup=markup)
-
 
 def handle_comment_input(bot, message: Message, OWNER_ID):
     if not message.text or '\n' not in message.text:
