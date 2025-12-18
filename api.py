@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import os
+from flask_cors import CORS  # ← Добавлено для разрешения CORS
 from main import bot 
 
 app = Flask(__name__)
+CORS(app)  # ← Разрешаем запросы с любого домена (включая Vercel и Telegram WebApp)
+
 DB_FILE = "farm.db"
 
 # Принудительное создание таблицы при запуске сервера
@@ -117,5 +120,5 @@ def farm_api():
         return jsonify({"status": "saved"})
 
 if __name__ == '__main__':
-    print("Flask API запущен на порту 10311")
+    print("Flask API запущен на порту 10311 с поддержкой CORS")
     app.run(host='0.0.0.0', port=10311)
