@@ -1,7 +1,7 @@
 import os
 import logging
 from handlers import register_handlers
-from broadcast import register_broadcast_handlers 
+from broadcast import register_broadcast_handlers
 from telebot import TeleBot
 from dotenv import load_dotenv
 
@@ -28,7 +28,7 @@ bot = TeleBot(TOKEN)
 register_handlers(bot, OWNER_ID)
 
 
-register_broadcast_handlers(bot)
+register_broadcast_handlers(bot, OWNER_ID)
 
 if __name__ == '__main__':
     logger.info(f"Бот запущен. Владелец: {OWNER_ID}")
