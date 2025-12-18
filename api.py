@@ -1,19 +1,21 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import os
-from flask_cors import CORS  # ← Добавлено для разрешения CORS
+from flask_cors import CORS
 from main import bot 
 
 app = Flask(__name__)
-CORS(app)  # ← Разрешаем запросы с любого домена (включая Vercel и Telegram WebApp)
+CORS(app)
 
 DB_FILE = "farm.db"
 
-# Принудительное создание таблицы при запуске сервера
+
 def init_db():
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
+        
+
         c.execute('''
             CREATE TABLE IF NOT EXISTS farm_progress (
                 user_id INTEGER PRIMARY KEY,
@@ -28,18 +30,29 @@ def init_db():
                 reset_data TEXT
             )
         ''')
+
+        c.execute("PRAGMA table_info(farm_progress)")
+        columns = [col[1] for col in c.fetchall()]
+
+        if 'fields_unlocked' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN fields_unlocked INTEGER DEFAULT 1")
+            print("[INIT] Добавлен столбец fields_unlocked")
+
+        if 'reset_data' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN reset_data TEXT")
+            print("[INIT] Добавлен столбец reset_data")
+
         conn.commit()
         conn.close()
-        print(f"[INIT] Таблица farm_progress создана/проверена. База: {os.path.abspath(DB_FILE)}")
+        print(f"[INIT] Таблица готова. База: {os.path.abspath(DB_FILE)}")
     except Exception as e:
-        print(f"[INIT ERROR] Ошибка создания таблицы: {e}")
+        print(f"[INIT ERROR] Ошибка: {e}")
 
-# Вызываем при старте
+
 init_db()
 
 @app.route('/api/farm', methods=['GET', 'POST'])
 def farm_api():
-    # Логируем каждый запрос
     print(f"\n=== Новый запрос {request.method} от {request.remote_addr} ===")
     if request.method == 'POST':
         print(f"JSON данные: {request.get_json()}")
@@ -68,8 +81,8 @@ def farm_api():
                 "mined_date": row[5],
                 "streak": row[6],
                 "last_claim": row[7],
-                "fields_unlocked": row[8],
-                "reset_data": row[9]
+                "fields_unlocked": row[8] if len(row) > 8 else 1,
+                "reset_data": row[9] if len(row) > 9 else None
             }
             print(f"Найден прогресс: {result}")
             return jsonify(result)
