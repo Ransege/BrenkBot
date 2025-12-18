@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import os
-import json  # ← Добавлено для работы с JSON
+import json
 from flask_cors import CORS
 from main import bot 
 
@@ -106,7 +106,6 @@ def farm_api():
         print(f"POST запрос для user_id={user_id}")
         print(f"Полученные данные: {data}")
 
-        # Преобразуем reset_data в JSON-строку
         reset_data_raw = data.get('reset_data')
         reset_data_json = json.dumps(reset_data_raw) if reset_data_raw is not None else None
 
