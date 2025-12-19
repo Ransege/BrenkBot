@@ -27,7 +27,9 @@ def init_db():
                 streak INTEGER DEFAULT 0,
                 last_claim TEXT,
                 fields_unlocked INTEGER DEFAULT 1,
-                reset_data TEXT
+                reset_data TEXT,
+                miner_level INTEGER DEFAULT 0,
+                last_miner_claim INTEGER DEFAULT 0
             )
         ''')
 
@@ -36,58 +38,58 @@ def init_db():
 
         if 'fields_unlocked' not in columns:
             c.execute("ALTER TABLE farm_progress ADD COLUMN fields_unlocked INTEGER DEFAULT 1")
-            print("[INIT] Добавлен столбец fields_unlocked")
 
         if 'reset_data' not in columns:
             c.execute("ALTER TABLE farm_progress ADD COLUMN reset_data TEXT")
-            print("[INIT] Добавлен столбец reset_data")
 
         if 'miner_level' not in columns:
             c.execute("ALTER TABLE farm_progress ADD COLUMN miner_level INTEGER DEFAULT 0")
-            print("[INIT] Добавлен столбец miner_level")
 
         if 'last_miner_claim' not in columns:
             c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
-            print("[INIT] Добавлен столбец last_miner_claim")
 
         conn.commit()
         conn.close()
-        print(f"[INIT] Таблица готова. База: {os.path.abspath(DB_FILE)}")
     except Exception as e:
-        print(f"[INIT ERROR] Ошибка: {e}")
+        print(f"[INIT ERROR] Ошибка инициализации БД: {e}")
 
 init_db()
 
 @app.route('/api/farm', methods=['GET', 'POST'])
 def farm_api():
-    print(f"\n=== Новый запрос {request.method} от {request.remote_addr} ===")
-    if request.method == 'POST':
-        print(f"JSON данные: {request.get_json()}")
-    else:
-        print(f"Параметры: {request.args}")
+    user_id = None
 
-    user_id = request.args.get('user_id') if request.method == 'GET' else request.json.get('user_id')
+    if request.method == 'GET':
+        user_id = request.args.get('user_id')
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        user_id = data.get('user_id') or data.get('user484_id')  # поддержка опечатки в игре
+
     if not user_id:
-        print("ОШИБКА: user_id не передан")
+        app.logger.error("ОШИБКА: user_id не передан")
         return jsonify({"error": "user_id required"}), 400
+
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return jsonify({"error": "user_id должен быть числом"}), 400
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
     if request.method == 'GET':
-        print(f"GET запрос для user_id={user_id}")
         c.execute("SELECT * FROM farm_progress WHERE user_id = ?", (user_id,))
         row = c.fetchone()
         conn.close()
+
         if row:
-            reset_data_str = row[9] if len(row) > 9 else None
             reset_data = None
-            if reset_data_str is not None and isinstance(reset_data_str, str):
+            if row[9]:
                 try:
-                    reset_data = json.loads(reset_data_str)
-                except json.JSONDecodeError:
+                    reset_data = json.loads(row[9])
+                except:
                     reset_data = None
-            
+
             result = {
                 "balance": row[1],
                 "hack_level": row[2],
@@ -101,10 +103,8 @@ def farm_api():
                 "miner_level": row[10] if len(row) > 10 else 0,
                 "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000)
             }
-            print(f"Найден прогресс: {result}")
             return jsonify(result)
         else:
-            print(f"Прогресс не найден — возвращаем дефолт")
             return jsonify({
                 "balance": 0,
                 "hack_level": 1,
@@ -120,10 +120,27 @@ def farm_api():
             })
 
     elif request.method == 'POST':
-        data = request.json
+        data = request.get_json(silent=True) or {}
 
+        reset_data_json = None
         reset_data_raw = data.get('reset_data')
-        reset_data_json = json.dumps(reset_data_raw) if reset_data_raw is not None else None
+        if reset_data_raw is not None:
+            try:
+                reset_data_json = json.dumps(reset_data_raw)
+            except:
+                reset_data_json = None
+
+        miner_level = data.get('miner_level', 0)
+        try:
+            miner_level = int(miner_level)
+        except:
+            miner_level = 0
+
+        last_miner_claim = data.get('last_miner_claim')
+        try:
+            last_miner_claim = int(last_miner_claim)
+        except:
+            last_miner_claim = int(datetime.now().timestamp() * 1000)
 
         try:
             c.execute('''
@@ -132,22 +149,22 @@ def farm_api():
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
-                data.get('balance', 0),
-                data.get('hack_level', 1),
-                data.get('limit_level', 0),
-                data.get('today_mined', 0),
+                int(data.get('balance', 0)),
+                int(data.get('hack_level', 1)),
+                int(data.get('limit_level', 0)),
+                int(data.get('today_mined', 0)),
                 data.get('mined_date'),
-                data.get('streak', 0),
+                int(data.get('streak', 0)),
                 data.get('last_claim'),
-                data.get('fields_unlocked', 1),
+                int(data.get('fields_unlocked', 1)),
                 reset_data_json,
-                data.get('miner_level', 0),
-                data.get('last_miner_claim', int(datetime.now().timestamp() * 1000))
+                miner_level,
+                last_miner_claim
             ))
             conn.commit()
-            print(f"Прогресс успешно сохранён для user_id={user_id}")
+            app.logger.info(f"Прогресс успешно сохранён для user_id={user_id}")
         except Exception as e:
-            print(f"ОШИБКА сохранения в БД: {e}")
+            app.logger.error(f"ОШИБКА сохранения в БД: {e}")
             conn.rollback()
         finally:
             conn.close()
@@ -155,5 +172,4 @@ def farm_api():
         return jsonify({"status": "saved"})
 
 if __name__ == '__main__':
-    print("Flask API запущен на порту 10311 с поддержкой CORS и безопасным JSON")
     app.run(host='0.0.0.0', port=10311)
