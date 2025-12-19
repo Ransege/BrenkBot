@@ -29,24 +29,16 @@ def init_db():
                 fields_unlocked INTEGER DEFAULT 1,
                 reset_data TEXT,
                 miner_level INTEGER DEFAULT 0,
-                last_miner_claim INTEGER DEFAULT 0
+                last_miner_claim INTEGER DEFAULT 0,
+                last_free_reset INTEGER DEFAULT 0
             )
         ''')
 
         c.execute("PRAGMA table_info(farm_progress)")
         columns = [col[1] for col in c.fetchall()]
 
-        if 'fields_unlocked' not in columns:
-            c.execute("ALTER TABLE farm_progress ADD COLUMN fields_unlocked INTEGER DEFAULT 1")
-
-        if 'reset_data' not in columns:
-            c.execute("ALTER TABLE farm_progress ADD COLUMN reset_data TEXT")
-
-        if 'miner_level' not in columns:
-            c.execute("ALTER TABLE farm_progress ADD COLUMN miner_level INTEGER DEFAULT 0")
-
-        if 'last_miner_claim' not in columns:
-            c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
+        if 'last_free_reset' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN last_free_reset INTEGER DEFAULT 0")
 
         conn.commit()
         conn.close()
@@ -101,7 +93,8 @@ def farm_api():
                 "fields_unlocked": row[8] if len(row) > 8 else 1,
                 "reset_data": reset_data,
                 "miner_level": row[10] if len(row) > 10 else 0,
-                "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000)
+                "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000),
+                "last_free_reset": row[12] if len(row) > 12 else 0
             }
             return jsonify(result)
         else:
@@ -116,7 +109,8 @@ def farm_api():
                 "fields_unlocked": 1,
                 "reset_data": None,
                 "miner_level": 0,
-                "last_miner_claim": int(datetime.now().timestamp() * 1000)
+                "last_miner_claim": int(datetime.now().timestamp() * 1000),
+                "last_free_reset": 0
             })
 
     elif request.method == 'POST':
@@ -144,12 +138,13 @@ def farm_api():
         fields_unlocked = safe_int(data.get('fields_unlocked'), 1)
         miner_level = safe_int(data.get('miner_level'), 0)
         last_miner_claim = safe_int(data.get('last_miner_claim'), int(datetime.now().timestamp() * 1000))
+        last_free_reset = safe_int(data.get('last_free_reset'), 0)
 
         try:
             c.execute('''
                 INSERT OR REPLACE INTO farm_progress 
-                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data, miner_level, last_miner_claim)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data, miner_level, last_miner_claim, last_free_reset)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
                 balance,
@@ -162,7 +157,8 @@ def farm_api():
                 fields_unlocked,
                 reset_data_json,
                 miner_level,
-                last_miner_claim
+                last_miner_claim,
+                last_free_reset
             ))
             conn.commit()
             app.logger.info(f"Прогресс успешно сохранён для user_id={user_id}")
