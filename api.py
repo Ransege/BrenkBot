@@ -60,27 +60,35 @@ init_db()
 
 @app.route('/api/farm', methods=['GET', 'POST'])
 def farm_api():
-    user_id = None
-
     if request.method == 'GET':
         user_id = request.args.get('user_id')
-    elif request.method == 'POST':
-        data = request.get_json(silent=True) or {}
-        user_id = data.get('user_id') or data.get('user484_id')
+        top = request.args.get('top')
 
-    if not user_id:
-        app.logger.error("ОШИБКА: user_id не передан")
-        return jsonify({"error": "user_id required"}), 400
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
 
-    try:
-        user_id = int(user_id)
-    except ValueError:
-        return jsonify({"error": "user_id должен быть числом"}), 400
+        if top:
+            try:
+                limit = int(top)
+                c.execute("SELECT balance FROM farm_progress ORDER BY balance DESC LIMIT ?", (limit,))
+                rows = c.fetchall()
+                result = [{"balance": row[0]} for row in rows]
+                conn.close()
+                return jsonify(result)
+            except:
+                conn.close()
+                return jsonify({"error": "invalid top parameter"}), 400
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+        if not user_id:
+            conn.close()
+            return jsonify({"error": "user_id required"}), 400
 
-    if request.method == 'GET':
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            conn.close()
+            return jsonify({"error": "user_id должен быть числом"}), 400
+
         c.execute("SELECT * FROM farm_progress WHERE user_id = ?", (user_id,))
         row = c.fetchone()
         conn.close()
@@ -127,6 +135,32 @@ def farm_api():
     elif request.method == 'POST':
         data = request.get_json(silent=True) or {}
 
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id required"}), 400
+
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return jsonify({"error": "user_id должен быть числом"}), 400
+
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        add_balance = data.get('add_balance', False)
+
+        if add_balance:
+            c.execute("SELECT balance FROM farm_progress WHERE user_id = ?", (user_id,))
+            current_row = c.fetchone()
+            current_balance = current_row[0] if current_row else 0
+            amount = int(data.get('balance', 0))
+            if amount <= 0:
+                conn.close()
+                return jsonify({"error": "amount должен быть положительным"}), 400
+            new_balance = current_balance + amount
+        else:
+            new_balance = int(data.get('balance', 0))
+
         reset_data_json = None
         reset_data_raw = data.get('reset_data')
         if reset_data_raw is not None:
@@ -135,34 +169,14 @@ def farm_api():
             except:
                 reset_data_json = None
 
-        def safe_int(value, default=0):
-            try:
-                return int(value) if value is not None else default
-            except (ValueError, TypeError):
-                return default
-
-        add_balance = data.get('add_balance', False)
-
-        if add_balance:
-            c.execute("SELECT balance FROM farm_progress WHERE user_id = ?", (user_id,))
-            current_row = c.fetchone()
-            current_balance = current_row[0] if current_row else 0
-            amount = safe_int(data.get('balance'), 0)
-            if amount <= 0:
-                conn.close()
-                return jsonify({"error": "amount должен быть положительным"}), 400
-            new_balance = current_balance + amount
-        else:
-            new_balance = safe_int(data.get('balance'), 0)
-
-        hack_level = safe_int(data.get('hack_level'), 1)
-        limit_level = safe_int(data.get('limit_level'), 0)
-        today_mined = safe_int(data.get('today_mined'), 0)
-        streak = safe_int(data.get('streak'), 0)
-        fields_unlocked = safe_int(data.get('fields_unlocked'), 1)
-        miner_level = safe_int(data.get('miner_level'), 0)
-        last_miner_claim = safe_int(data.get('last_miner_claim'), int(datetime.now().timestamp() * 1000))
-        last_free_reset = safe_int(data.get('last_free_reset'), 0)
+        hack_level = int(data.get('hack_level', 1))
+        limit_level = int(data.get('limit_level', 0))
+        today_mined = int(data.get('today_mined', 0))
+        streak = int(data.get('streak', 0))
+        fields_unlocked = int(data.get('fields_unlocked', 1))
+        miner_level = int(data.get('miner_level', 0))
+        last_miner_claim = int(data.get('last_miner_claim', int(datetime.now().timestamp() * 1000)))
+        last_free_reset = int(data.get('last_free_reset', 0))
 
         try:
             c.execute('''
