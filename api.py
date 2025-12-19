@@ -4,7 +4,6 @@ import os
 import json
 from datetime import datetime
 from flask_cors import CORS
-from main import bot 
 
 app = Flask(__name__)
 CORS(app)
@@ -29,7 +28,8 @@ def init_db():
                 fields_unlocked INTEGER DEFAULT 1,
                 reset_data TEXT,
                 miner_level INTEGER DEFAULT 0,
-                last_miner_claim INTEGER DEFAULT 0
+                last_miner_claim INTEGER DEFAULT 0,
+                last_free_reset INTEGER DEFAULT 0
             )
         ''')
 
@@ -47,6 +47,9 @@ def init_db():
 
         if 'last_miner_claim' not in columns:
             c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
+
+        if 'last_free_reset' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN last_free_reset INTEGER DEFAULT 0")
 
         conn.commit()
         conn.close()
@@ -101,7 +104,8 @@ def farm_api():
                 "fields_unlocked": row[8] if len(row) > 8 else 1,
                 "reset_data": reset_data,
                 "miner_level": row[10] if len(row) > 10 else 0,
-                "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000)
+                "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000),
+                "last_free_reset": row[12] if len(row) > 12 else 0
             }
             return jsonify(result)
         else:
@@ -116,7 +120,8 @@ def farm_api():
                 "fields_unlocked": 1,
                 "reset_data": None,
                 "miner_level": 0,
-                "last_miner_claim": int(datetime.now().timestamp() * 1000)
+                "last_miner_claim": int(datetime.now().timestamp() * 1000),
+                "last_free_reset": 0
             })
 
     elif request.method == 'POST':
@@ -136,7 +141,20 @@ def farm_api():
             except (ValueError, TypeError):
                 return default
 
-        balance = safe_int(data.get('balance'), 0)
+        add_balance = data.get('add_balance', False)
+
+        if add_balance:
+            c.execute("SELECT balance FROM farm_progress WHERE user_id = ?", (user_id,))
+            current_row = c.fetchone()
+            current_balance = current_row[0] if current_row else 0
+            amount = safe_int(data.get('balance'), 0)
+            if amount <= 0:
+                conn.close()
+                return jsonify({"error": "amount должен быть положительным"}), 400
+            new_balance = current_balance + amount
+        else:
+            new_balance = safe_int(data.get('balance'), 0)
+
         hack_level = safe_int(data.get('hack_level'), 1)
         limit_level = safe_int(data.get('limit_level'), 0)
         today_mined = safe_int(data.get('today_mined'), 0)
@@ -144,15 +162,16 @@ def farm_api():
         fields_unlocked = safe_int(data.get('fields_unlocked'), 1)
         miner_level = safe_int(data.get('miner_level'), 0)
         last_miner_claim = safe_int(data.get('last_miner_claim'), int(datetime.now().timestamp() * 1000))
+        last_free_reset = safe_int(data.get('last_free_reset'), 0)
 
         try:
             c.execute('''
                 INSERT OR REPLACE INTO farm_progress 
-                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data, miner_level, last_miner_claim)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data, miner_level, last_miner_claim, last_free_reset)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
-                balance,
+                new_balance,
                 hack_level,
                 limit_level,
                 today_mined,
@@ -162,7 +181,8 @@ def farm_api():
                 fields_unlocked,
                 reset_data_json,
                 miner_level,
-                last_miner_claim
+                last_miner_claim,
+                last_free_reset
             ))
             conn.commit()
             app.logger.info(f"Прогресс успешно сохранён для user_id={user_id}")
