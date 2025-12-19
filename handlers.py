@@ -144,12 +144,7 @@ def handle_farm_command(bot, message: Message):
         "Продолжай взламывать мою сеть в Mini App!"
     )
     
-    markup = types.InlineKeyboardMarkup()
-    web_app_info = types.WebAppInfo(url="https://10311.dscrd.ru/farm.html")
-    button = types.InlineKeyboardButton("Открыть Brenk-Coin Farm", web_app=web_app_info)
-    markup.add(button)
-    
-    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=markup)
+    bot.send_message(message.chat.id, text, parse_mode='Markdown')
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
