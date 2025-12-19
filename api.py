@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import sqlite3
 import os
 import json
+from datetime import datetime
 from flask_cors import CORS
 from main import bot 
 
@@ -41,6 +42,14 @@ def init_db():
             c.execute("ALTER TABLE farm_progress ADD COLUMN reset_data TEXT")
             print("[INIT] Добавлен столбец reset_data")
 
+        if 'miner_level' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN miner_level INTEGER DEFAULT 0")
+            print("[INIT] Добавлен столбец miner_level")
+
+        if 'last_miner_claim' not in columns:
+            c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
+            print("[INIT] Добавлен столбец last_miner_claim")
+
         conn.commit()
         conn.close()
         print(f"[INIT] Таблица готова. База: {os.path.abspath(DB_FILE)}")
@@ -72,13 +81,12 @@ def farm_api():
         conn.close()
         if row:
             reset_data_str = row[9] if len(row) > 9 else None
+            reset_data = None
             if reset_data_str is not None and isinstance(reset_data_str, str):
                 try:
                     reset_data = json.loads(reset_data_str)
                 except json.JSONDecodeError:
                     reset_data = None
-            else:
-                reset_data = None
             
             result = {
                 "balance": row[1],
@@ -89,7 +97,9 @@ def farm_api():
                 "streak": row[6],
                 "last_claim": row[7],
                 "fields_unlocked": row[8] if len(row) > 8 else 1,
-                "reset_data": reset_data
+                "reset_data": reset_data,
+                "miner_level": row[10] if len(row) > 10 else 0,
+                "last_miner_claim": row[11] if len(row) > 11 else int(datetime.now().timestamp() * 1000)
             }
             print(f"Найден прогресс: {result}")
             return jsonify(result)
@@ -104,12 +114,13 @@ def farm_api():
                 "streak": 0,
                 "last_claim": None,
                 "fields_unlocked": 1,
-                "reset_data": None
+                "reset_data": None,
+                "miner_level": 0,
+                "last_miner_claim": int(datetime.now().timestamp() * 1000)
             })
 
     elif request.method == 'POST':
         data = request.json
-
 
         reset_data_raw = data.get('reset_data')
         reset_data_json = json.dumps(reset_data_raw) if reset_data_raw is not None else None
@@ -117,8 +128,8 @@ def farm_api():
         try:
             c.execute('''
                 INSERT OR REPLACE INTO farm_progress 
-                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (user_id, balance, hack_level, limit_level, today_mined, mined_date, streak, last_claim, fields_unlocked, reset_data, miner_level, last_miner_claim)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
                 data.get('balance', 0),
@@ -129,7 +140,9 @@ def farm_api():
                 data.get('streak', 0),
                 data.get('last_claim'),
                 data.get('fields_unlocked', 1),
-                reset_data_json
+                reset_data_json,
+                data.get('miner_level', 0),
+                data.get('last_miner_claim', int(datetime.now().timestamp() * 1000))
             ))
             conn.commit()
             print(f"Прогресс успешно сохранён для user_id={user_id}")
