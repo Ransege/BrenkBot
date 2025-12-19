@@ -63,7 +63,7 @@ def farm_api():
         user_id = request.args.get('user_id')
     elif request.method == 'POST':
         data = request.get_json(silent=True) or {}
-        user_id = data.get('user_id') or data.get('user484_id')  # поддержка опечатки в игре
+        user_id = data.get('user_id') or data.get('user484_id')
 
     if not user_id:
         app.logger.error("ОШИБКА: user_id не передан")
