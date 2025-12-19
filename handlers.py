@@ -29,16 +29,16 @@ def init_db():
             last_miner_claim INTEGER DEFAULT 0
         )
     ''')
-    
+   
     c.execute("PRAGMA table_info(farm_progress)")
     columns = [col[1] for col in c.fetchall()]
-    
+   
     if 'miner_level' not in columns:
         c.execute("ALTER TABLE farm_progress ADD COLUMN miner_level INTEGER DEFAULT 0")
-    
+   
     if 'last_miner_claim' not in columns:
         c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
-    
+   
     conn.commit()
     conn.close()
 
@@ -145,7 +145,9 @@ def handle_farm_command(bot, message: Message):
     )
     
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("Открыть Brenk-Coin Farm", web_app=types.WebAppInfo(url="https://yourdomain.com/farm.html")))
+    web_app_info = types.WebAppInfo(url="https://10311.dscrd.ru/farm.html")
+    button = types.InlineKeyboardButton("Открыть Brenk-Coin Farm", web_app=web_app_info)
+    markup.add(button)
     
     bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=markup)
 
