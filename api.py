@@ -130,17 +130,20 @@ def farm_api():
             except:
                 reset_data_json = None
 
-        miner_level = data.get('miner_level', 0)
-        try:
-            miner_level = int(miner_level)
-        except:
-            miner_level = 0
+        def safe_int(value, default=0):
+            try:
+                return int(value) if value is not None else default
+            except (ValueError, TypeError):
+                return default
 
-        last_miner_claim = data.get('last_miner_claim')
-        try:
-            last_miner_claim = int(last_miner_claim)
-        except:
-            last_miner_claim = int(datetime.now().timestamp() * 1000)
+        balance = safe_int(data.get('balance'), 0)
+        hack_level = safe_int(data.get('hack_level'), 1)
+        limit_level = safe_int(data.get('limit_level'), 0)
+        today_mined = safe_int(data.get('today_mined'), 0)
+        streak = safe_int(data.get('streak'), 0)
+        fields_unlocked = safe_int(data.get('fields_unlocked'), 1)
+        miner_level = safe_int(data.get('miner_level'), 0)
+        last_miner_claim = safe_int(data.get('last_miner_claim'), int(datetime.now().timestamp() * 1000))
 
         try:
             c.execute('''
@@ -149,14 +152,14 @@ def farm_api():
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 user_id,
-                int(data.get('balance', 0)),
-                int(data.get('hack_level', 1)),
-                int(data.get('limit_level', 0)),
-                int(data.get('today_mined', 0)),
+                balance,
+                hack_level,
+                limit_level,
+                today_mined,
                 data.get('mined_date'),
-                int(data.get('streak', 0)),
+                streak,
                 data.get('last_claim'),
-                int(data.get('fields_unlocked', 1)),
+                fields_unlocked,
                 reset_data_json,
                 miner_level,
                 last_miner_claim
