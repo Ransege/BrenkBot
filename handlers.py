@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 DB_FILE = "farm.db"
 
+OWNER_ID = 833288786
+
+add_bc_state = {}
+
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -21,68 +25,16 @@ def init_db():
             hack_level INTEGER DEFAULT 1,
             limit_level INTEGER DEFAULT 0,
             today_mined INTEGER DEFAULT 0,
-            last_reset TEXT,
+            mined_date TEXT,
             streak INTEGER DEFAULT 0,
             last_claim TEXT,
-            mined_date TEXT,
+            fields_unlocked INTEGER DEFAULT 1,
+            reset_data TEXT,
             miner_level INTEGER DEFAULT 0,
-            last_miner_claim INTEGER DEFAULT 0
+            last_miner_claim INTEGER DEFAULT 0,
+            last_free_reset INTEGER DEFAULT 0
         )
     ''')
-   
-    c.execute("PRAGMA table_info(farm_progress)")
-    columns = [col[1] for col in c.fetchall()]
-   
-    if 'miner_level' not in columns:
-        c.execute("ALTER TABLE farm_progress ADD COLUMN miner_level INTEGER DEFAULT 0")
-   
-    if 'last_miner_claim' not in columns:
-        c.execute("ALTER TABLE farm_progress ADD COLUMN last_miner_claim INTEGER DEFAULT 0")
-   
-    conn.commit()
-    conn.close()
-
-def get_user_progress(user_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT * FROM farm_progress WHERE user_id = ?", (user_id,))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return {
-            "balance": row[1],
-            "hack_level": row[2],
-            "limit_level": row[3],
-            "today_mined": row[4],
-            "last_reset": row[5],
-            "streak": row[6],
-            "last_claim": row[7],
-            "mined_date": row[8],
-            "miner_level": row[9] if len(row) > 9 else 0,
-            "last_miner_claim": row[10] if len(row) > 10 else 0
-        }
-    return None
-
-def save_user_progress(user_id, data):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        INSERT OR REPLACE INTO farm_progress
-        (user_id, balance, hack_level, limit_level, today_mined, last_reset, streak, last_claim, mined_date, miner_level, last_miner_claim)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        user_id,
-        data.get('balance', 0),
-        data.get('hack_level', 1),
-        data.get('limit_level', 0),
-        data.get('today_mined', 0),
-        data.get('last_reset'),
-        data.get('streak', 0),
-        data.get('last_claim'),
-        data.get('mined_date'),
-        data.get('miner_level', 0),
-        data.get('last_miner_claim', 0)
-    ))
     conn.commit()
     conn.close()
 
@@ -92,6 +44,7 @@ def register_handlers(bot, OWNER_ID):
     bot.message_handler(commands=['start'])(lambda m: start_handler(bot, m))
     bot.message_handler(commands=['ask'])(lambda m: handle_ask_command(bot, m))
     bot.message_handler(commands=['farm'])(lambda m: handle_farm_command(bot, m))
+    bot.message_handler(commands=['addbc'])(lambda m: addbc_handler(bot, m))
     bot.callback_query_handler(func=lambda call: True)(lambda call: handle_callbacks(bot, call, OWNER_ID))
     bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'sticker'])(lambda m: handle_media_message(bot, m, OWNER_ID))
 
@@ -104,7 +57,7 @@ def handle_ask_command(bot, message: Message):
 def handle_farm_command(bot, message: Message):
     user_id = message.from_user.id
     progress = get_user_progress(user_id)
-    
+   
     if not progress:
         progress = {
             "balance": 0,
@@ -117,22 +70,22 @@ def handle_farm_command(bot, message: Message):
             "last_miner_claim": 0
         }
         save_user_progress(user_id, progress)
-    
+   
     balance = progress.get("balance", 0) or 0
     hack_level = progress.get("hack_level", 1) or 1
     limit_level = progress.get("limit_level", 0) or 0
     today_mined = progress.get("today_mined", 0) or 0
     miner_level = progress.get("miner_level", 0) or 0
-    
+   
     miner_level = max(0, min(5, int(miner_level)))
-    
+   
     hack_per_tap = 1 if hack_level == 1 else pow(2, hack_level - 1) * 2 + (hack_level - 2) * 4
     today = datetime.now().strftime("%Y-%m-%d")
     bonus_claimed = progress.get("last_claim") == today
-    
+   
     miner_rates = [0, 300, 900, 1800, 6000, 18000]
     miner_rate = miner_rates[miner_level]
-    
+   
     text = (
         "🌌 *Brenk-Coin Farm* ♡\n\n"
         f"💰 Баланс: *{balance:,} BC*\n"
@@ -143,8 +96,69 @@ def handle_farm_command(bot, message: Message):
         f"🎁 Ежедневный бонус: {'Получен' if bonus_claimed else 'Доступен!'}\n\n"
         "Продолжай взламывать мою сеть в Mini App!"
     )
-    
+   
     bot.send_message(message.chat.id, text, parse_mode='Markdown')
+
+def addbc_handler(bot, message: Message):
+    if message.from_user.id != OWNER_ID:
+        bot.send_message(message.chat.id, "Эта команда доступна только владельцу бота.")
+        return
+
+    bot.send_message(message.chat.id, "Введите ID пользователя, которому хотите добавить BC:")
+    bot.register_next_step_handler(message, lambda m: process_target_id(bot, m))
+
+def process_target_id(bot, message: Message):
+    if message.from_user.id != OWNER_ID:
+        return
+
+    try:
+        target_id = int(message.text.strip())
+    except ValueError:
+        bot.send_message(message.chat.id, "ID должен быть числом. Попробуйте снова: /addbc")
+        return
+
+    add_bc_state[message.chat.id] = {"target_id": target_id}
+    bot.send_message(message.chat.id, f"ID {target_id} принят.\nТеперь введите количество BC для добавления:")
+
+    bot.register_next_step_handler(message, lambda m: process_amount(bot, m))
+
+def process_amount(bot, message: Message):
+    if message.from_user.id != OWNER_ID:
+        return
+
+    state = add_bc_state.get(message.chat.id)
+    if not state:
+        bot.send_message(message.chat.id, "Сессия истекла. Начните заново: /addbc")
+        return
+
+    target_id = state["target_id"]
+
+    try:
+        amount = int(message.text.strip())
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        bot.send_message(message.chat.id, "Количество должно быть положительным числом. Попробуйте снова: /addbc")
+        return
+
+    import requests
+
+    url = "https://10311.dscrd.ru/api/farm"
+    try:
+        response = requests.post(url, json={
+            "user_id": target_id,
+            "balance": amount,
+            "add_balance": True
+        }, timeout=10)
+
+        if response.status_code == 200 and response.json().get("status") == "saved":
+            bot.send_message(message.chat.id, f"Успешно добавлено {amount:,} BC пользователю {target_id} ♡")
+        else:
+            bot.send_message(message.chat.id, f"Ошибка сервера: {response.text}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Не удалось связаться с сервером: {str(e)}")
+
+    add_bc_state.pop(message.chat.id, None)
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
@@ -301,3 +315,47 @@ def handle_comment_input(bot, message: Message, OWNER_ID):
     link, comment = message.text.split('\n', 1)
     bot.send_message(OWNER_ID, f"Комментарий:\n{link.strip()}\n\n{comment.strip()}")
     bot.send_message(message.chat.id, "Комментарий отправлен!")
+
+def get_user_progress(user_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT * FROM farm_progress WHERE user_id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "balance": row[1],
+            "hack_level": row[2],
+            "limit_level": row[3],
+            "today_mined": row[4],
+            "last_reset": row[5],
+            "streak": row[6],
+            "last_claim": row[7],
+            "mined_date": row[8],
+            "miner_level": row[9] if len(row) > 9 else 0,
+            "last_miner_claim": row[10] if len(row) > 10 else 0
+        }
+    return None
+
+def save_user_progress(user_id, data):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        INSERT OR REPLACE INTO farm_progress
+        (user_id, balance, hack_level, limit_level, today_mined, last_reset, streak, last_claim, mined_date, miner_level, last_miner_claim)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        user_id,
+        data.get('balance', 0),
+        data.get('hack_level', 1),
+        data.get('limit_level', 0),
+        data.get('today_mined', 0),
+        data.get('last_reset'),
+        data.get('streak', 0),
+        data.get('last_claim'),
+        data.get('mined_date'),
+        data.get('miner_level', 0),
+        data.get('last_miner_claim', 0)
+    ))
+    conn.commit()
+    conn.close()
