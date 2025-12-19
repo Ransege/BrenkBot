@@ -112,25 +112,32 @@ def handle_farm_command(bot, message: Message):
             "today_mined": 0,
             "streak": 0,
             "last_claim": None,
-            "miner_level": 0
+            "miner_level": 0,
+            "last_miner_claim": 0
         }
         save_user_progress(user_id, progress)
     
-    hack_per_tap = 1 if progress['hack_level'] == 1 else pow(2, progress['hack_level'] - 1) * 2 + (progress['hack_level'] - 2) * 4
-    today = datetime.now().strftime("%Y-%m-%d")
-    bonus_claimed = progress['last_claim'] == today
+    balance = progress.get("balance", 0) or 0
+    hack_level = progress.get("hack_level", 1) or 1
+    limit_level = progress.get("limit_level", 0) or 0
+    today_mined = progress.get("today_mined", 0) or 0
+    miner_level = progress.get("miner_level", 0) or 0
     
-    miner_rate = [0, 300, 900, 1800, 6000, 18000][progress['miner_level']]
+    hack_per_tap = 1 if hack_level == 1 else pow(2, hack_level - 1) * 2 + (hack_level - 2) * 4
+    today = datetime.now().strftime("%Y-%m-%d")
+    bonus_claimed = progress.get("last_claim") == today
+    
+    miner_rate = [0, 300, 900, 1800, 6000, 18000][miner_level]
     
     text = (
-        f"🌌 *Brenk-Coin Farm* ♡\n\n"
-        f"💰 Баланс: *{progress['balance']:,} BC*\n"
-        f"🔓 Уровень взлома: *{progress['hack_level']}* (+{hack_per_tap} BC за тап)\n"
-        f"⬆️ Уровень лимита: *{progress['limit_level']}*\n"
-        f"⏳ Добыто сегодня: *{progress['today_mined']:,} BC*\n"
-        f"⛏️ Майнер: уровень *{progress['miner_level']}* ({miner_rate} BC/час)\n"
+        "🌌 *Brenk-Coin Farm* ♡\n\n"
+        f"💰 Баланс: *{balance:,} BC*\n"
+        f"🔓 Уровень взлома: *{hack_level}* (+{hack_per_tap} BC за тап)\n"
+        f"⬆ Уровень лимита: *{limit_level}*\n"
+        f"⏳ Добыто сегодня: *{today_mined:,} BC*\n"
+        f"⛏ Майнер: уровень *{miner_level}* ({miner_rate} BC/час)\n"
         f"🎁 Ежедневный бонус: {'Получен' if bonus_claimed else 'Доступен!'}\n\n"
-        f"Продолжай взламывать мою сеть в Mini App!"
+        "Продолжай взламывать мою сеть в Mini App!"
     )
     
     bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=get_main_markup())
