@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 from datetime import datetime
+from telebot import types
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards import get_main_markup, get_return_markup, get_guide_markup, get_message_markup, get_modes_markup, get_ai_start_markup, get_ai_chat_markup
 from states import pending_reply, user_id_to_username, ask_instruction, ai_mode_users, user_modes
@@ -123,11 +124,14 @@ def handle_farm_command(bot, message: Message):
     today_mined = progress.get("today_mined", 0) or 0
     miner_level = progress.get("miner_level", 0) or 0
     
+    miner_level = max(0, min(5, int(miner_level)))
+    
     hack_per_tap = 1 if hack_level == 1 else pow(2, hack_level - 1) * 2 + (hack_level - 2) * 4
     today = datetime.now().strftime("%Y-%m-%d")
     bonus_claimed = progress.get("last_claim") == today
     
-    miner_rate = [0, 300, 900, 1800, 6000, 18000][miner_level]
+    miner_rates = [0, 300, 900, 1800, 6000, 18000]
+    miner_rate = miner_rates[miner_level]
     
     text = (
         "🌌 *Brenk-Coin Farm* ♡\n\n"
@@ -140,7 +144,10 @@ def handle_farm_command(bot, message: Message):
         "Продолжай взламывать мою сеть в Mini App!"
     )
     
-    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=get_main_markup())
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("Открыть Brenk-Coin Farm", web_app=types.WebAppInfo(url="https://yourdomain.com/farm.html")))
+    
+    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=markup)
 
 def handle_callbacks(bot, call, OWNER_ID):
     try:
@@ -163,9 +170,9 @@ def handle_callbacks(bot, call, OWNER_ID):
             welcome = "Я сегодня тёплая и задумчивая…" if call.data == 'mode_normal' else "О-о-о… ты выбрал флирт? Я уже улыбаюсь"
             bot.send_message(call.message.chat.id, welcome, reply_markup=get_ai_chat_markup())
         elif call.data == 'mode_crazy':
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("Да, мне 18+", callback_data='confirm_crazy'))
-            markup.add(InlineKeyboardButton("Нет, верни обычный", callback_data='mode_normal'))
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("Да, мне 18+", callback_data='confirm_crazy'))
+            markup.add(types.InlineKeyboardButton("Нет, верни обычный", callback_data='mode_normal'))
             bot.send_message(
                 call.message.chat.id,
                 "Ты уверен, что тебе есть 18?\n\nЭтот режим — очень откровенный, страстный и без тормозов.",
