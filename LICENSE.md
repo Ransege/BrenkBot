@@ -1,13 +1,15 @@
-This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+# Лицензия
 
-Автор / Creator: Rensage
+This work is licensed under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License** (CC BY-NC-ND 4.0).
 
-To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/
-or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+**Автор / Creator:** Rensage
 
-На русском:
-Произведение лицензировано под Creative Commons «С указанием авторства — Некоммерческая — Без производных» 4.0 Всемирная.
+To view a copy of this license, visit  
+https://creativecommons.org/licenses/by-nc-nd/4.0/
 
-Автор: Rensage
+На русском: Произведение лицензировано под **Creative Commons «С указанием авторства — Некоммерческая — Без производных произведений» 4.0 Всемирная**.
 
-Подробности лицензии: https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ru
+**Автор:** Rensage
+
+Подробности лицензии (на русском):  
+https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ru
