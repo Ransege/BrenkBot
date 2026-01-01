@@ -15,5 +15,6 @@
 - Ответы от Brenk с сохранением медиа  
 
 #Лицензия
+
 Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License** (CC BY-NC-ND 4.0). 
 © 2025 Rensage 
